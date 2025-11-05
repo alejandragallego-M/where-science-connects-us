@@ -69,6 +69,12 @@
       transition: fill 0.2s ease;
     }
 
+    /* 💙 Los países con alumnos se ven azulados desde el inicio */
+    .country.has-alumni {
+      fill: #93c5fd; /* azul suave */
+    }
+
+    /* 💙 Y se iluminan más al pasar el mouse */
     .country.has-alumni:hover {
       fill: #2563eb;
     }
@@ -85,7 +91,8 @@
     <svg id="worldMap"></svg>
     <div class="legend">
       <div><span style="display:inline-block;width:12px;height:12px;background:#d1d5db;margin-right:5px;border-radius:2px;"></span>Country (no alumni)</div>
-      <div><span style="display:inline-block;width:12px;height:12px;background:#2563eb;margin-right:5px;border-radius:2px;"></span>Country with alumni (hover)</div>
+      <div><span style="display:inline-block;width:12px;height:12px;background:#93c5fd;margin-right:5px;border-radius:2px;"></span>Country with alumni</div>
+      <div><span style="display:inline-block;width:12px;height:12px;background:#2563eb;margin-right:5px;border-radius:2px;"></span>Hover effect</div>
     </div>
   </div>
 
@@ -139,5 +146,7 @@
     });
   </script>
 </body>
+</html>
+
 </html>
 
