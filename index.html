@@ -1,161 +1,143 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Where Science Connects Us</title>
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+4w7k8k0kQm0Q2h2b8X1RZ+4b8M6A0b6q5pY+g8nY=" crossorigin=""/>
   <style>
-    :root{ --bg: #f5f6f7; --card: #ffffff; --muted: #9aa4ae; --accent: #2b78d6; --accent-hover: #1f5fb3 }
-    body{ margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); color:#222 }
-    .container{ max-width:1100px; margin:28px auto; padding:20px }
-    .card{ background:var(--card); border-radius:12px; box-shadow:0 6px 18px rgba(20,30,40,0.06); padding:18px }
-    h1{ margin:0 0 8px; font-size:26px; font-weight:600 }
-    p.lead{ margin:0 0 14px; color:var(--muted) }
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: #f5f6f7;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
 
-    /* map area */
-    #map{ width:100%; height:560px; border-radius:10px; overflow:hidden }
+    .container {
+      margin: 3rem auto;
+      max-width: 1000px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 2rem;
+    }
 
-    /* small legend / footer */
-    .legend{ margin-top:12px; display:flex; gap:12px; align-items:center }
-    .legend .swatch{ width:14px; height:14px; border-radius:3px }
-    .swatch.gray{ background:#cfd6db }
-    .swatch.blue{ background:var(--accent) }
+    h1 {
+      color: #1a1a1a;
+      margin-bottom: 0.5rem;
+    }
 
-    /* tooltip styled outside Leaflet (optional) */
-    .alumni-popup{ background:rgba(255,255,255,0.95); border-radius:8px; padding:8px 10px; box-shadow:0 6px 20px rgba(10,20,30,0.12); font-size:13px; color:#111 }
-    .alumni-popup h4{ margin:0 0 6px; font-size:14px }
-    .alumni-popup ul{ margin:0; padding-left:16px }
+    p {
+      color: #6b7280;
+      margin-bottom: 2rem;
+    }
 
-    /* responsive */
-    @media (max-width:640px){ #map{ height:420px } }
+    svg {
+      width: 100%;
+      height: 550px;
+      border-radius: 10px;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: white;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      pointer-events: none;
+      font-size: 0.9rem;
+      color: #1f2937;
+      border: 1px solid #e5e7eb;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .country {
+      fill: #d1d5db;
+      stroke: white;
+      stroke-width: 0.5;
+      cursor: pointer;
+      transition: fill 0.2s ease;
+    }
+
+    .country.has-alumni:hover {
+      fill: #2563eb;
+    }
+
+    .name {
+      color: #2563eb;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="card">
-      <h1>Where Science Connects Us</h1>
-      <p class="lead">Hover countries to see former members from each place. Example data is fictitious.</p>
-
-      <div id="map"></div>
-
-      <div class="legend">
-        <div class="swatch gray"></div><div>Country (no alumni)</div>
-        <div class="swatch blue"></div><div>Country with alumni (hover)</div>
-      </div>
+    <h1>Where Science Connects Us</h1>
+    <p>Hover countries to see former members from each place. Example data is fictitious.</p>
+    <svg id="worldMap"></svg>
+    <div class="legend">
+      <div><span style="display:inline-block;width:12px;height:12px;background:#d1d5db;margin-right:5px;border-radius:2px;"></span>Country (no alumni)</div>
+      <div><span style="display:inline-block;width:12px;height:12px;background:#2563eb;margin-right:5px;border-radius:2px;"></span>Country with alumni (hover)</div>
     </div>
   </div>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8y5y0b6bIYf1q3Qv5qz0a5a5mX2G8f2g0Qk8yk=" crossorigin=""></script>
+  <div class="tooltip" id="tooltip"></div>
+
+  <!-- D3.js y TopoJSON desde CDN -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson@3"></script>
+
   <script>
-    // ---------- CONFIG: alumni example data (fictitious) ----------
-    // Key: country name as appears in the world GeoJSON 'name' property.
-    // Value: array of alumni names (strings). Only names are shown per your request.
+    const width = 960, height = 500;
+    const svg = d3.select("#worldMap")
+      .attr("viewBox", [0, 0, width, height]);
+
+    const projection = d3.geoNaturalEarth1();
+    const path = d3.geoPath(projection);
+    const tooltip = d3.select("#tooltip");
+
+    // Datos ficticios
     const alumniByCountry = {
-      "Colombia": [
-        "Alejandra Marulanda Gallego",
-        "Carlos Torres"
-      ],
-      "Canada": [
-        "John Doe",
-        "Emma Brown"
-      ],
-      "Mexico": [
-        "María Pérez"
-      ],
-      "India": [
-        "Amit Sharma",
-        "Priya Patel"
-      ],
-      "Germany": [
-        "Lukas Müller"
-      ]
+      "Canada": ["Alice M.", "John S."],
+      "Germany": ["Clara B."],
+      "Japan": ["Taro Y.", "Mika K."],
+      "Colombia": ["Daniela R.", "Andrés M."]
     };
 
-    // ---------- Initialize Leaflet map ----------
-    const map = L.map('map', { zoomControl: true, attributionControl: true }).setView([20, 0], 2);
+    d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(worldData => {
+      const countries = topojson.feature(worldData, worldData.objects.countries).features;
 
-    // Add a minimalist tile layer (OpenStreetMap) - will work on GitHub Pages
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 6,
-      minZoom: 1,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    // Styling functions
-    const defaultStyle = { fillColor: '#d3d8dd', color: '#bfc8cf', weight: 1, fillOpacity: 1 };
-    const highlightStyle = { fillColor: '#2b78d6', color: '#1560a8', weight: 1.5, fillOpacity: 0.9 };
-
-    // Create a control for an info popup (we'll use a Leaflet popup to show names)
-    const infoPopup = L.popup({ closeButton: false, offset: L.point(0,-10), className: '' });
-
-    // Fetch world GeoJSON (public raw file). This URL is a commonly used public GeoJSON of country geometries.
-    // If you prefer a different source, replace the URL below.
-    const GEOJSON_URL = 'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json';
-
-    fetch(GEOJSON_URL).then(r => r.json()).then(world => {
-      // Add countries as a geojson layer
-      L.geoJSON(world, {
-        style: defaultStyle,
-        onEachFeature: function(feature, layer) {
-          const countryName = feature.properties && (feature.properties.name || feature.properties.NAME || feature.properties.ADMIN);
-          const alumni = alumniByCountry[countryName];
-
-          // mouseover
-          layer.on('mouseover', function(e) {
-            // highlight
-            layer.setStyle(highlightStyle);
-
-            if (alumni && alumni.length) {
-              const content = buildPopupContent(countryName, alumni);
-              infoPopup.setLatLng(e.latlng).setContent(content).openOn(map);
-            }
-          });
-
-          // mouseout
-          layer.on('mouseout', function() {
-            layer.setStyle(defaultStyle);
-            map.closePopup(infoPopup);
-          });
-
-          // optional: click to zoom
-          layer.on('click', function(e) {
-            map.fitBounds(layer.getBounds(), { maxZoom: 4 });
-            if (alumni && alumni.length) {
-              const content = buildPopupContent(countryName, alumni);
-              infoPopup.setLatLng(layer.getBounds().getCenter()).setContent(content).openOn(map);
-            }
-          });
-        }
-      }).addTo(map);
-    }).catch(err => {
-      console.error('Could not load GeoJSON:', err);
-      alert('Failed to load map data. Make sure you have internet connection when opening the page.');
+      svg.selectAll("path")
+        .data(countries)
+        .join("path")
+        .attr("class", d => alumniByCountry[d.properties.name] ? "country has-alumni" : "country")
+        .attr("d", path)
+        .on("mouseover", (event, d) => {
+          const names = alumniByCountry[d.properties.name];
+          if (names) {
+            tooltip
+              .style("opacity", 1)
+              .html(`<strong>${d.properties.name}</strong><br><span class="name">${names.join("<br>")}</span>`)
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 30) + "px");
+          }
+        })
+        .on("mousemove", (event) => {
+          tooltip
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 30) + "px");
+        })
+        .on("mouseout", () => tooltip.style("opacity", 0));
     });
-
-    function buildPopupContent(country, alumni) {
-      // Only names requested
-      const names = alumni.map(n => `<li>${escapeHtml(n)}</li>`).join('');
-      return `<div class="alumni-popup"><h4>${escapeHtml(country)}</h4><ul>${names}</ul></div>`;
-    }
-
-    // small utility to avoid XSS if someone edits the file with external data
-    function escapeHtml(text) {
-      return String(text).replace(/[&<>"]/g, function(m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m]; });
-    }
-
   </script>
-
-  <!--
-    USAGE NOTES (keep inside the file as comments):
-    1) This HTML is ready to publish on GitHub Pages. Create a repo, add this file as index.html (or any name) and enable Pages on main branch.
-    2) When opened from GitHub Pages the map will fetch a GeoJSON file from GitHub to draw country shapes.
-    3) To embed this page into Google Sites: use Insert → Embed → By URL and paste the GitHub Pages URL for this file.
-    4) To update alumni, edit the "alumniByCountry" object near the top of the script.
-
-    If you'd like, I can also prepare a minimal README with step-by-step GitHub Pages instructions.
-  -->
 </body>
 </html>
+
